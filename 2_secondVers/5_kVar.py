@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Dec 27 13:10:22 2025
+Simulate a 2-DOF mass-spring-damper system with a nonlinear stiffness k2 defined by
+k2 = alpha * |x2d - x1d|, where alpha is a given parameter.
 
 @author: demaria
 """

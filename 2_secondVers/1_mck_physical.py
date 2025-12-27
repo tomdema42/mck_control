@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-
-
+Simulate a 2-DOF mass-spring-damper system with physical parameters
+loaded from a text file.
 @author: demaria
 """
 

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Dec 27 14:28:30 2025
+Optimize the stiffness k2 of a 2-DOF mass-spring-damper system to minimize the objective function
+J(k2) = ∫ x1(t)^2 dt + reg_k2 * ∫ k2 dt.
+Plot the cost function over a range of k2 values.
 
 @author: demaria
 """

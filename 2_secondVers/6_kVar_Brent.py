@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Optimize alpha with cost:
-J = ∫ x1(t) dt + lambda_k2 ∫ k2(t) dt
+Optimize the parameter alpha defining the nonlinear stiffness k2 in a 2-DOF mass-spring-damper system
+to minimize the objective function J(alpha) = ∫ x1(t) dt + lambda_k2 * ∫ k2(t) dt,
+where k2(t) = alpha * |x2d(t) - x1d(t)|.
+
+@author: demaria
 """
 
 import numpy as np
