@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script is used to simulate the dynamics of the two-mass-spring-damper system
-using numpy and JAX, in order to find the faster configuration
+using numpy over 1000 simulations to find the average time per simulation.
 
 @author: demaria
 """
