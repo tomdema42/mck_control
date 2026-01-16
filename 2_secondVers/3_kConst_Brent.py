@@ -20,7 +20,6 @@ def simulate_from_params(p):
     k1, k2 = p["k1"], p["k2"]
     c1, c2 = p["c1"], p["c2"]
     cd, kc = p["cd"], p["kc"]
-
     F_ext = make_forcing(p)
 
     y0 = (p["x1_0"], p["x1d_0"], p["x2_0"], p["x2d_0"])
@@ -62,7 +61,14 @@ def objective_J_of_k2(k2, p_base,reg_k2):
     
     J_tot = J_x1 + J_k2*reg_k2
     return J_tot
-
+def J_fun(t,x1,k2,reg_k2):
+    integrand = x1**2
+    J_x1 = np.trapezoid(integrand, t)
+    J_k2 = 0#np.trapezoid([float(k2)]*len(t),t)
+    
+    J_tot = J_x1 + J_k2*reg_k2
+    return J_tot
+    
 
 def optimize_k2(param_file, k2_bounds,reg_k2, mode="x1_sq"):
     p_base = load_params(param_file)
@@ -97,6 +103,9 @@ if __name__ == "__main__":
 
     print(f"Optimal k2 = {k2_star}")
     print(f"Objective J(k2*) = {J_star}")
+    ciao = J_fun(t,x1,k2_star,reg_k2)
+
+    print('Integral = ', np.trapezoid(x1**2, t))
     _ = build_canonical_params(load_params(param_file),verbose=True)
     
     plt.figure()
@@ -108,13 +117,138 @@ if __name__ == "__main__":
     plt.legend()
     plt.tight_layout()
 
-    plt.figure()
-    plt.plot(t, x1d, label="x1d (optimal)")
-    plt.plot(t, x2d, label="x2d (optimal)")
-    plt.xlabel("t [s]")
-    plt.ylabel("Velocity [m/s]")
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
+    # plt.figure()
+    # plt.plot(t, x1d, label="x1d (optimal)")
+    # plt.plot(t, x2d, label="x2d (optimal)")
+    # plt.xlabel("t [s]")
+    # plt.ylabel("Velocity [m/s]")
+    # plt.grid()
+    # plt.legend()
+    # plt.tight_layout()
+
+
+
 
     plt.show()
+# %%
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.animation import FuncAnimation, PillowWriter
+# from pathlib import Path
+
+
+# def make_gif_2dof(t, x1, x2, k2_t=None, out_path="dyn_system.gif", fps=30, n_frames=400):
+#     t = np.asarray(t)
+#     x1 = np.asarray(x1)
+#     x2 = np.asarray(x2)
+#     if k2_t is not None:
+#         k2_t = np.asarray(k2_t)
+
+#     # Equilibrium (visual) reference positions so the two masses are separated
+#     x1_ref = 0.0
+#     x2_ref = 1.0
+
+#     # Sample indices to keep the gif size reasonable
+#     n_frames = int(min(n_frames, len(t)))
+#     idx = np.linspace(0, len(t) - 1, n_frames).astype(int)
+
+#     x1p = x1_ref + x1[idx]
+#     x2p = x2_ref + x2[idx]
+
+#     xmin = min(x1p.min(), x2p.min()) - 0.6
+#     xmax = max(x1p.max(), x2p.max()) + 0.6
+
+#     fig, ax = plt.subplots(figsize=(10, 2.6))
+#     ax.set_xlim(xmin, xmax)
+#     ax.set_ylim(-0.6, 0.6)
+#     ax.set_yticks([])
+#     ax.set_xlabel("Position")
+#     ax.grid(True, axis="x", alpha=0.3)
+
+#     # Track (rail)
+#     rail, = ax.plot([xmin, xmax], [0, 0], lw=2)
+
+#     # Wall at the left
+#     wall_x = xmin + 0.1
+#     wall, = ax.plot([wall_x, wall_x], [-0.25, 0.25], lw=4)
+
+#     # Mass rectangles (as thick line segments for simplicity)
+#     m_w = 0.18
+#     m_h = 0.18
+
+#     m1_line, = ax.plot([], [], lw=8)  # will draw as a thick segment
+#     m2_line, = ax.plot([], [], lw=8)
+
+#     # Connection between masses (spring/damper simplified as a line)
+#     link, = ax.plot([], [], lw=2)
+
+#     # Ground connections (to wall / ground) simplified lines
+#     g1, = ax.plot([], [], lw=1.5, alpha=0.8)
+#     g2, = ax.plot([], [], lw=1.5, alpha=0.8)
+
+#     time_text = ax.text(0.02, 0.90, "", transform=ax.transAxes)
+
+#     # Optional equilibrium markers
+#     ax.axvline(x1_ref, ls="--", lw=1, alpha=0.4)
+#     ax.axvline(x2_ref, ls="--", lw=1, alpha=0.4)
+
+#     def mass_segment(xc):
+#         return [xc - m_w / 2, xc + m_w / 2], [0, 0]
+
+#     def init():
+#         m1_line.set_data([], [])
+#         m2_line.set_data([], [])
+#         link.set_data([], [])
+#         g1.set_data([], [])
+#         g2.set_data([], [])
+#         time_text.set_text("")
+#         return m1_line, m2_line, link, g1, g2, time_text
+
+#     def update(frame_i):
+#         j = idx[frame_i]
+#         x1c = x1_ref + x1[j]
+#         x2c = x2_ref + x2[j]
+
+#         m1_line.set_data(*mass_segment(x1c))
+#         m2_line.set_data(*mass_segment(x2c))
+
+#         # Link between masses
+#         link.set_data([x1c + m_w / 2, x2c - m_w / 2], [0, 0])
+
+#         # Ground connections (visual)
+#         g1.set_data([wall_x, x1c - m_w / 2], [0, 0])
+#         g2.set_data([x2c + m_w / 2, x2c + m_w / 2 + 0.25], [0, 0])  # small "ground" stub
+
+#         if k2_t is not None:
+#             time_text.set_text(f"t = {t[j]:.3f} s    k2 = {k2_t[j]:.3g}")
+#         else:
+#             time_text.set_text(f"t = {t[j]:.3f} s")
+
+#         return m1_line, m2_line, link, g1, g2, time_text
+
+#     anim = FuncAnimation(fig, update, frames=n_frames, init_func=init, blit=True)
+
+#     out_path = Path(out_path)
+#     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+#     writer = PillowWriter(fps=fps)
+#     anim.save(str(out_path), writer=writer)
+#     plt.close(fig)
+
+#     return str(out_path)
+
+
+# # --- call it after your final simulation ---
+# gif_file = make_gif_2dof(
+#     t=t,
+#     x1=x1,
+#     x2=x2,
+#     k2_t=np.zeros((len(t))),                 # optional, shown in the caption
+#     out_path="./dyn_system.gif",
+#     fps=30,
+#     n_frames=400
+# )
+
+# print("Saved GIF:", gif_file)
+
+

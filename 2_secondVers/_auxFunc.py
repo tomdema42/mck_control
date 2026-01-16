@@ -38,7 +38,8 @@ def make_forcing(params):
         return lambda t: F0 if t >= t_on else 0.0
     if kind == "impulse":
         t_off = params['forcing_t_off']
-        return lambda t: F0 if t<=t_off else 0.0
+        t_on = params['forcing_t_on']
+        return lambda t: F0 if(t_on <= t <  t_off) else 0.0
     if kind == "sine":
         w = 2.0 * np.pi * params["forcing_freq_hz"]
         return lambda t: F0 * np.sin(w * t)
@@ -85,3 +86,44 @@ def build_canonical_params(p,verbose=False):
             print(f"  {k}: {meta[k]}")
 
     return omega1, omega2, zeta1, zeta2, zeta_d1, zeta_d2
+
+# %%
+
+# -----------------------------
+# RK4 integrators (fixed step)
+# -----------------------------
+def rk4_step(f, t, y, dt, u):
+    k1 = f(t, y, u)
+    k2 = f(t + 0.5 * dt, y + 0.5 * dt * k1, u)
+    k3 = f(t + 0.5 * dt, y + 0.5 * dt * k2, u)
+    k4 = f(t + dt, y + dt * k3, u)
+    return y + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
+
+
+def rk4_step_adjoint(g, t, lam, dt, x, u):
+    k1 = g(t, lam, x, u)
+    k2 = g(t + 0.5 * dt, lam + 0.5 * dt * k1, x, u)
+    k3 = g(t + 0.5 * dt, lam + 0.5 * dt * k2, x, u)
+    k4 = g(t + dt, lam + dt * k3, x, u)
+    return lam + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
+
+# -----------------------------
+# Generic RK4 (works for closed-loop + adjoint)
+# -----------------------------
+def rk4_step_11c(fun, t, y, dt, *args):
+    k1 = fun(t, y, *args)
+    k2 = fun(t + 0.5 * dt, y + 0.5 * dt * k1, *args)
+    k3 = fun(t + 0.5 * dt, y + 0.5 * dt * k2, *args)
+    k4 = fun(t + dt,       y + dt * k3,       *args)
+    return y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+# %% 
+def CostFunc_comparison(x1,x1d,x2,x2d, u,w_x1,w_x1d,w_e,w_ed,r_u):
+    e = x1 + x2
+    ed = x1d + x2d
+    return (
+        w_x1 * x1 * x1
+        + w_x1d * x1d * x1d
+        + w_e * e * e
+        + w_ed * ed * ed
+        + r_u * u * u
+    )

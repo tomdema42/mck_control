@@ -37,6 +37,7 @@ def simulate_from_file(param_file, alpha):
 
         # nonlinear stiffness defined by alpha
         k2 = alpha * np.abs(x2d-x1d)
+        kc  =20# alpha*np.abs(x1d-x2d)
 
         x1dd = (-k1*x1 - c1*x1d + cd*(x2d - x1d) + kc*(x2 - x1) + F_ext(t)) / m1
         x2dd = (-k2*x2 - c2*x2d - cd*(x2d - x1d) - kc*(x2 - x1)) / m2
@@ -61,7 +62,7 @@ def simulate_from_file(param_file, alpha):
 if __name__ == "__main__":
 
     
-    alpha = 300
+    alpha =1e4
 
     t, y = simulate_from_file("params.txt", alpha)
 
@@ -76,13 +77,13 @@ if __name__ == "__main__":
     plt.grid()
     plt.tight_layout()
 
-    plt.figure()
-    plt.plot(t, x1d, label="x1d")
-    plt.plot(t, x2d, label="x2d")
-    plt.xlabel("t [s]")
-    plt.ylabel("Velocity [m/s]")
-    plt.legend()
-    plt.grid()
-    plt.tight_layout()
+    # plt.figure()
+    # plt.plot(t, x1d, label="x1d")
+    # plt.plot(t, x2d, label="x2d")
+    # plt.xlabel("t [s]")
+    # plt.ylabel("Velocity [m/s]")
+    # plt.legend()
+    # plt.grid()
+    # plt.tight_layout()
 
     plt.show()
