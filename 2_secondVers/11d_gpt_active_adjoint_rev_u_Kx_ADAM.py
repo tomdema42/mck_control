@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from _auxFunc import load_params, make_forcing, rk4_step_11c
-
+import time
 
 # -----------------------------
 # Main: adjoint optimization of K with ADAM (NO saturation)
@@ -225,7 +225,8 @@ def simulate_2dof_with_adjoint_K_optimization_adam(
 # Run + plots
 # -----------------------------
 if __name__ == "__main__":
-
+    
+    start = time.time()
     param_file = "params.txt"
     p = load_params(param_file)
 
@@ -275,6 +276,8 @@ if __name__ == "__main__":
         print(f"  {k}: {v}")
     print("K_opt =", K_opt)
 
+    stop = time.time()
+    print('Total time = ',stop-start)
     x1_0, x1d_0, x2_0, x2d_0 = X0.T
     x1_1, x1d_1, x2_1, x2d_1 = X1.T
 

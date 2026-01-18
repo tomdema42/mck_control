@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     # NEW: choose alpha (units ~ 1/m if u is N and k2 is N/m)
     alpha = 0.02
-    alpha = 0.2  # start with 0.0 to recover the original (no k2-u coupling), then increase carefully
+    alpha = 0.02  # start with 0.0 to recover the original (no k2-u coupling), then increase carefully
 
     t_end = 10.0
     y0 = (0.0, 0.0, 0.0, 0.0)
