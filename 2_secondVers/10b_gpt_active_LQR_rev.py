@@ -150,7 +150,7 @@ if __name__ == "__main__":
     w_x1, w_x1d =1.0, 0.1 # Penalization on x1 displacement and velocity
     w_e, w_ed  = 50.0, 2.0 # Enforcement on the antiphase e = x1+x2
     
-    r_u  = 1.05 #Penalization on the control ui^2
+    r_u  = 0.05 #Penalization on the control ui^2
     
     sol0, sol1, u_export, K = simulate_2dof_with_lqr(
         m1, m2,

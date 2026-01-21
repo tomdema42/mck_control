@@ -131,6 +131,23 @@ def print_metrics_table(metrics_by_label):
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid", floatfmt=".6g"))
     print()
 
+def plot_K_comparison(cases_dict):
+    # cases_dict[label] = K (length 4)
+    labels = list(cases_dict.keys())
+    Ks = np.array([np.asarray(cases_dict[lbl]).reshape(4,) for lbl in labels])  # (n_cases, 4)
+
+    x = np.arange(4)
+    width = 0.8 / len(labels)
+
+    plt.figure(figsize=(10, 4))
+    for i, lbl in enumerate(labels):
+        plt.bar(x + (i - (len(labels)-1)/2)*width, Ks[i], width=width, label=lbl)
+
+    plt.xticks(x, ["K1 (x1)", "K2 (x1d)", "K3 (x2)", "K4 (x2d)"])
+    plt.ylabel("Gain value")
+    plt.grid(True, axis="y")
+    plt.legend()
+    plt.tight_layout()
 
 def plot_comparison(t, results):
     # results[label] = dict(Y=..., u=...)
@@ -194,14 +211,14 @@ if __name__ == "__main__":
 
 
     # --- your gains ---
-    # K_adj = [11.65391309, 20.57484076, 0.09192578, 10.18879521] #BFGS starting from K0 = 0
-    # K_adj = [29.65793279  ,7.47783839, 16.79948253,  5.54431311] #BFGS starting from K0 almost = K_lqr
-    K_adj = [10.3008362   ,3.79037557   ,-8.40240652  ,1.06923721] #ADAM adjoint starting from K0 = 0
-    K_lqr = [29.621664, 7.29122777, 16.82680442, 5.68928951] #LQR solution
-
+    K_lqr = [29.13220515  ,7.44927118 ,19.48431309  ,5.73682962]
+    K_adj_fullState = [14.54161978, 10.12460598,  - 0.20083519,  8.03208862] # Full state adj
+    K_adj = [13.65857712 , 3.02411581,0,0] #Only x1, x1d states
+    
     cases = {
         "K_adj": K_adj,
         "K_lqr": K_lqr,
+        "K_adj_fullState": K_adj_fullState
     }
 
     results = {}
@@ -224,11 +241,12 @@ if __name__ == "__main__":
         results[label] = {"Y": Y, "u": u, "sol": sol}
         metrics[label] = compute_metrics(t, Y, u)
         x1, x1d, x2, x2d = Y
-        ciao  = CostFunc_comparison(x1,x1d,x2,x2d, u,w_x1,w_x1d,w_e,w_ed,r_u)
+        ciao  = CostFunc_comparison(Y, u,w_x1,w_x1d,w_e,w_ed,r_u)
         
-        print('Cost function: ',label,  np.trapezoid(ciao))
+        print('Cost function: ',label,  np.trapezoid(ciao,t))
 
     print_metrics_table(metrics)
     plot_comparison(t, results)
+    plot_K_comparison(cases)
     
     

@@ -117,7 +117,8 @@ def rk4_step_11c(fun, t, y, dt, *args):
     k4 = fun(t + dt,       y + dt * k3,       *args)
     return y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 # %% 
-def CostFunc_comparison(x1,x1d,x2,x2d, u,w_x1,w_x1d,w_e,w_ed,r_u):
+def CostFunc_comparison(x, u, w_x1,w_x1d,w_e,w_ed,r_u):
+    x1, x1d, x2, x2d = x
     e = x1 + x2
     ed = x1d + x2d
     return (
@@ -127,3 +128,4 @@ def CostFunc_comparison(x1,x1d,x2,x2d, u,w_x1,w_x1d,w_e,w_ed,r_u):
         + w_ed * ed * ed
         + r_u * u * u
     )
+

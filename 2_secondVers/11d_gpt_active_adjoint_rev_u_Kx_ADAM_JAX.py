@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ # -*- coding: utf-8 -*-
 """
 JAX + Optax ADAM optimization of a constant state-feedback gain K (NO saturation):
     u(t) = K @ x(t)
@@ -44,8 +44,6 @@ def simulate_2dof_with_optax_adam(
     lr=1e-2,
     betas=(0.9, 0.999),
     eps=1e-8,
-    weight_decay=0.0,
-    grad_clip=None,
     tol_grad=1e-6,
     print_every=25,
     seed=0,
@@ -109,12 +107,12 @@ def simulate_2dof_with_optax_adam(
     # -----------------------------
     def simulate_cost(K):
         def step(carry, i):
-            x, J = carry
+            x, J = carry #x and J at the i step
             Fi = F_nodes[i]
             Fh = F_half[i]
             Fi1 = F_nodes[i + 1]
 
-            u_i = jnp.dot(K, x)
+            u_i = jnp.dot(K, x) 
             x_next = rk4_step(x, K, Fi, Fh, Fi1)
             u_ip1 = jnp.dot(K, x_next)
 
@@ -126,8 +124,9 @@ def simulate_2dof_with_optax_adam(
 
     value_and_grad = jax.jit(jax.value_and_grad(simulate_cost))
 
-    # -----------------------------
+    # # -----------------------------
     # Trajectory simulation (for outputs/plots)
+    # TO DO: Change with a normal stuff
     # -----------------------------
     @jax.jit
     def simulate_traj(K):
@@ -153,21 +152,11 @@ def simulate_2dof_with_optax_adam(
     # -----------------------------
     # Optax optimizer
     # -----------------------------
-    if K0 is None:
-        K0 = np.zeros(4)
-
     K = jnp.array(K0)
+  
+    opt_adam = optax.adam(learning_rate=lr, b1=betas[0], b2=betas[1], eps=eps)
 
-    transforms = []
-    if grad_clip is not None:
-        transforms.append(optax.clip_by_global_norm(grad_clip))
-
-    if weight_decay and weight_decay != 0.0:
-        transforms.append(optax.adamw(learning_rate=lr, b1=betas[0], b2=betas[1], eps=eps, weight_decay=weight_decay))
-    else:
-        transforms.append(optax.adam(learning_rate=lr, b1=betas[0], b2=betas[1], eps=eps))
-
-    optimizer = optax.chain(*transforms)
+    optimizer = optax.chain(opt_adam)
     opt_state = optimizer.init(K)
 
     J_hist = []
@@ -176,8 +165,7 @@ def simulate_2dof_with_optax_adam(
     best_K = None
     best_it = -1
 
-    # (optional) make runs reproducible for any stochastic extensions later
-    _ = jax.random.PRNGKey(seed)
+   
 
     for it in range(1, max_iter + 1):
         J, gK = value_and_grad(K)
@@ -192,11 +180,8 @@ def simulate_2dof_with_optax_adam(
             best_K = np.array(K)
             best_it = it
 
-        if (print_every is not None) and (it % print_every == 0 or it == 1):
+        if  (it % print_every == 0 or it == 1):
             print(f"[Optax ADAM] it={it:4d}  J={Jf:.6e}  ||g||={gnorm:.3e}  K={np.array(K)}")
-
-        if gnorm < tol_grad:
-            break
 
         updates, opt_state = optimizer.update(gK, opt_state, params=K)
         K = optax.apply_updates(K, updates)
@@ -232,7 +217,7 @@ def simulate_2dof_with_optax_adam(
         np.array(X_opt),
         np.array(u_opt),
         K_opt,
-        info,
+        info
     )
 
 
@@ -259,7 +244,7 @@ if __name__ == "__main__":
     w_e, w_ed = 50.0, 2.0
     r_u = 0.05
 
-    max_iter = 2000
+    max_iter = 2_000
     K0 = np.zeros(4)
 
     t, X0, X1, u_nodes, K_opt, info = simulate_2dof_with_optax_adam(
@@ -276,10 +261,7 @@ if __name__ == "__main__":
         max_iter,
         K0=K0,
         lr=2e-2,
-        grad_clip=10.0,
-        tol_grad=1e-6,
         print_every=50,
-        weight_decay=0.0,
     )
 
     print("\nINFO:")

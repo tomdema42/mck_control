@@ -265,7 +265,7 @@ if __name__ == "__main__":
         lr=2e-2,
         grad_clip=10.0,
         tol_grad=1e-6,
-        device="cpu",
+        device="cuda",
         print_every=50
     )
 
