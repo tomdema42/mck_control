@@ -184,7 +184,46 @@ def plot_comparison(t, results):
     plt.tight_layout()
     plt.xlim(0,6)
 
-    
+# --- Plot labels / styles (you control everything here) ---
+CASE_META = {
+    "No control":       {"label": "No control",                "ls": "--", "lw": 2.0},
+    "K_lqr":            {"label": r"$K_{\mathrm{LQR}}$",        "ls": "-",  "lw": 2.0},
+    "K_adj_fullState":  {"label": r"$K_{\mathrm{adj,full}}$",  "ls": "-",  "lw": 2.0},
+    "K_adj":            {"label": r"$K_{\mathrm{adj,red}}$",   "ls": "-",  "lw": 2.0},
+}
+
+AX_LABELS = {"t": "t [s]", "x1": "$x_1$ [m]", "u": "u [N]"}
+
+
+def plot_x1_and_u_single_figure(t, results, case_meta, t_xlim=None):
+    # One figure, two stacked axes (shared x)
+    fig, (ax_x1, ax_u) = plt.subplots(2, 1, sharex=True, figsize=(12, 7))
+
+    for key, r in results.items():
+        meta = case_meta.get(key, {})
+        lbl = meta.get("label", key)
+        ls = meta.get("ls", "-")
+        lw = meta.get("lw", 2.0)
+
+        ax_x1.plot(t, r["Y"][0], label=lbl, linestyle=ls, linewidth=lw)
+        ax_u.plot(t, r["u"],     label=lbl, linestyle=ls, linewidth=lw)
+
+    ax_x1.set_ylabel(AX_LABELS["x1"])
+    ax_u.set_ylabel(AX_LABELS["u"])
+    ax_u.set_xlabel(AX_LABELS["t"])
+
+    ax_x1.grid(True)
+    ax_u.grid(True)
+
+    ax_x1.legend()
+
+    if t_xlim is not None:
+        ax_u.set_xlim(*t_xlim)
+
+    fig.tight_layout()
+    plt.gcf().savefig("./x1_u_vs_t.pdf", bbox_inches="tight")
+    return fig
+  
 
 
 if __name__ == "__main__":
@@ -216,9 +255,10 @@ if __name__ == "__main__":
     K_adj = [13.65857712 , 3.02411581,0,0] #Only x1, x1d states
     
     cases = {
-        "K_adj": K_adj,
+        "No control": [0,0,0,0],
         "K_lqr": K_lqr,
-        "K_adj_fullState": K_adj_fullState
+        "K_adj_fullState": K_adj_fullState,
+        "K_adj": K_adj,
     }
 
     results = {}
@@ -248,5 +288,7 @@ if __name__ == "__main__":
     print_metrics_table(metrics)
     plot_comparison(t, results)
     plot_K_comparison(cases)
+    plot_x1_and_u_single_figure(t, results, CASE_META, t_xlim=(0, 10))
+
     
     

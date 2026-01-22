@@ -53,7 +53,7 @@ def simulate_2dof_given_K_affine_k2(
 
         # time-varying stiffness
         k2_eff = k2_star + alpha * u
-
+        
         x1dd = (-k1 * x1 - c1 * x1d + cd * (x2d - x1d) + kc * (x2 - x1) + F_ext(t)) / m1
         x2dd = (-(k2_eff) * x2 - c2 * x2d - cd * (x2d - x1d) - kc * (x2 - x1) + u) / m2
 
@@ -224,6 +224,7 @@ if __name__ == "__main__":
     # K_adj =  [13.65920891,  3.02540851   ,0,0] #adj with only x1,x1d
     K_adj = [11.42021168 ,10.58120851  , 0.99881109  ,8.26833314] #Adj with the full state x
     cases = {
+        "No control": [0,0,0,0],
         "K_adj": K_adj,
         "K_lqr": K_lqr,
     }
