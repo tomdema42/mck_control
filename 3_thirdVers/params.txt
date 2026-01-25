@@ -1,0 +1,35 @@
+# masses
+m1 = 0.3
+m2 = 0.1
+
+# stiffness
+k1 = 11.83
+k2 = 15.0
+
+kc = 0.9
+
+# damping
+c1 = 0.11
+c2 = 0.05
+cd = 1.60
+
+k2_nom = 20.0
+# forcing
+F0 = 0.0
+# zero | step | sine | impulse
+forcing_type = impulse
+
+forcing_freq_hz = 0.4
+forcing_t_on = 1.0
+forcing_t_off = 1.5
+
+# simulation
+t0 = 0.0
+t_end = 10.0
+n_points = 4000
+
+# initial conditions
+x1_0 = 0.0
+x1d_0 = 0.0
+x2_0 = 0.0
+x2d_0 = 0.0

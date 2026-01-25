@@ -1,0 +1,31 @@
+# masses
+m1 = 0.3
+m2 = 0.1
+
+# stiffness
+k1 = 11.83
+k2 = 15.0
+kc = 0.9
+
+# damping
+c1 = 0.11
+c2 = 0.05
+cd = 1.60
+
+# Wheight parameters
+w_x1 =  1.0
+w_x1d = 0.1
+w_e =   50.0
+w_ed  = 2.0
+r_u = 0.05
+
+# simulation
+t0 = 0.0
+t_end = 10.0
+n_points = 4000
+
+# initial conditions
+x1_0 = 0.1
+x1d_0 = 0.0
+x2_0 = 0.0
+x2d_0 = 0.0
