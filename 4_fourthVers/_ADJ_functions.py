@@ -10,11 +10,17 @@ import jax.numpy as jnp
 
 #%%
 def make_time_grid(t_end, N):
+    """
+    Create time grid from 0 to t_end with N intervals (N+1 points).
+    """
     t = np.linspace(0.0, t_end, N + 1)
     dt = float(t[1] - t[0])
     return t, dt
 # -----------------------------
 def running_cost(x, u, w_x1, w_x1d, w_e, w_ed, r_u):
+    """
+    Running cost L(x,u) at a single time step.
+    """
     x1, x1d, x2, x2d = x
     e = x1 + x2
     ed = x1d + x2d
@@ -49,7 +55,7 @@ def grad_running_cost_x(x, K, w_x1, w_x1d, w_e, w_ed, r_u):
 #%%
 def rk4_step_state(x, K, dt, A, B):
     """
-    One RK4 step for the forward state dynamics WITHOUT forcing.
+    One RK4 step for the forward state dynamics.
 
     xdot = A x + B u,  u = K @ x
     """
@@ -75,12 +81,12 @@ def rk4_step_adjoint_rev(lam, g_curr, g_mid, g_next, dt, AclT):
     Reverse time with τ = T - t:
         dlam/dτ =  Acl^T lam + gradL
     """
-    def rhs(lam_local, gradL_local):
+    def rhs_lambda(lam_local, gradL_local):
         return AclT @ lam_local + gradL_local
 
-    k1_ = rhs(lam, g_curr)
-    k2_ = rhs(lam + 0.5 * dt * k1_, g_mid)
-    k3_ = rhs(lam + 0.5 * dt * k2_, g_mid)
-    k4_ = rhs(lam + dt * k3_, g_next)
+    k1_ = rhs_lambda(lam, g_curr)
+    k2_ = rhs_lambda(lam + 0.5 * dt * k1_, g_mid)
+    k3_ = rhs_lambda(lam + 0.5 * dt * k2_, g_mid)
+    k4_ = rhs_lambda(lam + dt * k3_, g_next)
 
     return lam + (dt / 6.0) * (k1_ + 2.0 * k2_ + 2.0 * k3_ + k4_)

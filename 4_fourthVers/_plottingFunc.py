@@ -44,7 +44,9 @@ def plot_control_force(t_end, u_export):
     return
 
 def plot_optimization_history(info):
-    
+    """
+    Plot optimization history: cost function over iterations.
+    """
     plt.figure(figsize=(12, 4))
     plt.plot(info["J_hist"] / np.min(info["J_hist"]))
     plt.xlabel("ADAM iteration")
@@ -55,7 +57,10 @@ def plot_optimization_history(info):
     plt.show()
     return
 
-def plot_gain_history(K_hist):
+def plot_gain_history_fullState(K_hist):
+    """
+    Plot gain vector history over optimization iterations.
+    """
     K_hist_np = np.array([np.array(k) for k in K_hist])
     plt.figure(figsize=(12, 4))
     plt.plot(K_hist_np[:, 0], label="K1")

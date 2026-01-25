@@ -429,7 +429,7 @@ if __name__ == "__main__":
     r_u = 0.05
 
     # Optimization hyperparameters
-    max_iter = 100_000
+    max_iter = 6_000
     K0 = np.zeros(4)
 
     t, X0, X1, u_nodes, K_opt, info,K_hist = simulate_2dof_with_optax_adam_classical_adjoint(
