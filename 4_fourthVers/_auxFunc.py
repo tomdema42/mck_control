@@ -5,6 +5,7 @@ Auxiliary functions for the 2-DOF system control.
 @author: demaria
 """
 import numpy as np
+import jax.numpy as jnp
 # %%
 def load_params(filename):
     """
@@ -29,7 +30,6 @@ def load_params(filename):
             pass
 
     return params
-    
 # %%
 def build_dyn_system_np(m1, m2, k1, k2, c1, c2, kc, cd):
     """
@@ -46,7 +46,21 @@ def build_dyn_system_np(m1, m2, k1, k2, c1, c2, kc, cd):
     ])
     B = np.array([[0.0], [0.0], [0.0], [1.0 / m2]])
     return A, B
+def build_dyn_system_jnp(m1, m2, k1, k2, c1, c2, kc, cd):
+    """
+    Build open-loop state-space matrices (A, B) for the 2-DOF system:
+        x = [x1, x1d, x2, x2d]
 
+    B is a 4-vector because u is a scalar input acting on x2dd.
+    """
+    A = jnp.array([
+        [0.0, 1.0, 0.0, 0.0],
+        [-(k1 + kc) / m1, -(c1 + cd) / m1,  kc / m1,       cd / m1],
+        [0.0, 0.0, 0.0, 1.0],
+        [ kc / m2,       cd / m2,      -(k2 + kc) / m2, -(c2 + cd) / m2],
+    ])
+    B = jnp.array([0.0, 0.0, 0.0, 1.0 / m2])  # scalar u injects into x2dd
+    return A, B
 
 #%%
 def rhs_fullState(t, y, K, m1, m2, k1, k2, c1, c2, kc, cd, Passive = False):
@@ -76,3 +90,4 @@ def rhs_fullState(t, y, K, m1, m2, k1, k2, c1, c2, kc, cd, Passive = False):
     x2dd = (-k2 * x2 - c2 * x2d - cd * (x2d - x1d) - kc * (x2 - x1) + u) / m2
 
     return [x1d, x1dd, x2d, x2dd]
+# %%
