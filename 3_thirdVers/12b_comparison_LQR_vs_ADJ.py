@@ -208,7 +208,7 @@ def plot_x1_and_u_single_figure(t, results, case_meta, t_xlim=None):
         ax_x1.plot(t, r["Y"][0], label=lbl, linestyle=ls, linewidth=lw)
         ax_u.plot(t, r["u"],     label=lbl, linestyle=ls, linewidth=lw)
 
-    ax_x1.set_ylabel(AX_LABELS["x1"])
+    ax_x1.set_ylabel("$s_1$")
     ax_u.set_ylabel(AX_LABELS["u"])
     ax_u.set_xlabel(AX_LABELS["t"])
 
@@ -221,7 +221,7 @@ def plot_x1_and_u_single_figure(t, results, case_meta, t_xlim=None):
         ax_u.set_xlim(*t_xlim)
 
     fig.tight_layout()
-    plt.gcf().savefig("./x1_u_vs_t.pdf", bbox_inches="tight")
+    plt.gcf().savefig("./Tut1_x1_u_vs_t.pdf", bbox_inches="tight")
     return fig
   
 
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 
     F_ext = make_forcing(p)
 
-    t_end = p["t_end"]
+    t_end =6# p["t_end"]
     y0 = [0.1, 0.0, 0.0, 0.0]
 
 
@@ -290,7 +290,7 @@ if __name__ == "__main__":
     print_metrics_table(metrics)
     plot_comparison(t, results)
     plot_K_comparison(cases)
-    plot_x1_and_u_single_figure(t, results, CASE_META, t_xlim=(0, 10))
+    plot_x1_and_u_single_figure(t, results, CASE_META, t_xlim=(0, 6))
 
     
     

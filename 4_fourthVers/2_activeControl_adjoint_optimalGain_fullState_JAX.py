@@ -1,37 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-Classical (continuous-time) adjoint optimization of a constant state-feedback gain K
+Continuous-time adjoint optimization of a constant state-feedback gain K
 
 Control law:
-    u(t) = K @ x(t)
-where x = [x1, x1d, x2, x2d] and K is a 4-vector.
+    a(t) = K @ s(t)
+where s = [s1, s1d, s2, s2d] and K is a 4-vector.
 
-Running cost:
-    L(x,u) = w_x1 x1^2 + w_x1d x1d^2 + w_e (x1+x2)^2 + w_ed (x1d+x2d)^2 + r_u u^2
 
 @author: demaria
 """
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 
 import jax
 import jax.numpy as jnp
 import optax
 
 from _auxFunc import load_params,build_dyn_system_jnp
-from _ADJ_functions import make_time_grid, running_cost, grad_running_cost_x
-from _ADJ_functions import  rk4_step_state, rk4_step_adjoint_rev
-chSize = 18
-plt.rcParams.update({'font.size': chSize})
+from _ADJ_functions import make_time_grid, running_cost, grad_running_cost_s
+from _ADJ_functions import  rk4_step_state, rk4_step_adjoint_rev,A_cl
+from _plottingFunc import plot_style
+plot_style(18)
 
 jax.config.update("jax_enable_x64", True)
 #%%
 # -----------------------------
 # Main simulation + optimization
 # -----------------------------
-def simulate_2dof_with_optax_adam_classical_adjoint(
+def simulate_adjoint_fullState(
     m1, m2,
     k1, k2,
     c1, c2,
@@ -39,8 +36,8 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
     t_end,
     y0,
     N,
-    w_x1, w_x1d, w_e, w_ed,
-    r_u,
+    w_s1, w_s1d, w_e, w_ed,
+    r_a,
     max_iter,
     K0,
     lr=1e-2,
@@ -53,9 +50,9 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
 
     Returns:
       t: time array (N+1,)
-      X_passive: trajectory with K=0 (N+1,4)
-      X_opt: trajectory with best K found (N+1,4)
-      u_opt: control signal for X_opt (N+1,)
+      S_passive: trajectory with K=0 (N+1,4)
+      S_opt: trajectory with best K found (N+1,4)
+      a_opt: control signal for S_opt (N+1,)
       K_opt: best gain vector (4,)
       info: dict with optimization diagnostics
       K_hist: list of K over iterations (device arrays)
@@ -74,51 +71,46 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
     @jax.jit
     def cost_and_grad_manual(K):
         #Compute forward trajectory given K
-        X = forward_trajectory(K) 
+        S = forward_trajectory(K) 
         #Compute cost from trajectory
-        J, u, _ = cost_from_traj(K, X)
+        J, a, _ = cost_from_traj(K, S)
         #Compute backward adjoint from trajectory
-        lam = adjoint_from_traj(K, X) 
+        lam = adjoint_from_traj(K, S) 
         # Compute gradient of cost with respect to K
-        gK = grad_wrt_K(K, X, u, lam)
+        gK = grad_wrt_K(K, S, a, lam)
         return J, gK
-    
-    # -----------------------------
-    # Closed-loop system matrix
-    def A_cl(K):
-        return A + jnp.outer(B, K)
-    
+      
     # ----------------------------
     # Forward trajectory given K
     def forward_trajectory(K):
         # RK4 step function
-        def step(x, i):
-            x_next = rk4_step_state(x, K, dt, A, B)
-            return x_next, x_next
+        def step(s, i):
+            s_next = rk4_step_state(s, K, dt, A, B)
+            return s_next, s_next
         # jax.lax.scan to unroll the loop of N steps
-        _, X_next = jax.lax.scan(step, y0, jnp.arange(N))
+        _, S_next = jax.lax.scan(step, y0, jnp.arange(N))
         # Add initial state
-        X = jnp.vstack([y0[None, :], X_next])
-        return X
+        S = jnp.vstack([y0[None, :], S_next])
+        return S
     
     # -----------------------------
-    # Compute cost J from trajectory X
-    def cost_from_traj(K, X):
-        # Control input u = K @ x for each state x in X
-        u = X @ K
+    # Compute cost J from trajectory S
+    def cost_from_traj(K, S):
+        # Control input a = K @ s for each state s in S
+        a = S @ K
         # Running cost at each time step, jax.vmap for vectorization
-        L = jax.vmap(lambda x_i, u_i: running_cost(x_i, u_i, w_x1, w_x1d, w_e, w_ed, r_u))(X, u)
+        L = jax.vmap(lambda s_i, a_i: running_cost(s_i, a_i, w_s1, w_s1d, w_e, w_ed, r_a))(S, a)
         # Integral of cost using trapezoidal rule
         J = jnp.sum(0.5 * dt * (L[:-1] + L[1:]))
-        return J, u, L
+        return J, a, L
     
     # -----------------------------
-    # Compute adjoint trajectory from state trajectory X
-    def adjoint_from_traj(K, X):
+    # Compute adjoint trajectory from state trajectory S
+    def adjoint_from_traj(K, S):
         # Transpose of closed-loop system matrix
-        AclT = A_cl(K).T
-        # Compute ∂L/∂x at each time step
-        gradL = jax.vmap(lambda x_i: grad_running_cost_x(x_i, K, w_x1, w_x1d, w_e, w_ed, r_u))(X)
+        AclT = A_cl(A,B,K).T
+        # Compute ∂L/∂s at each time step
+        gradL = jax.vmap(lambda s_i: grad_running_cost_s(s_i, K, w_s1, w_s1d, w_e, w_ed, r_a, reducedState=False))(S)
         # Reverse the gradient for backward integration
         gradL_rev = gradL[::-1]
 
@@ -143,11 +135,11 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
     
     # -----------------------------
     # Gradient of cost with respect to K
-    def grad_wrt_K(K, X, u, lam):
+    def grad_wrt_K(K, S, a, lam):
         
         BTlam = lam @ B  # (N+1,)
-        s = 2.0 * r_u * u + BTlam
-        g_nodes = X * s[:, None]  # (N+1,4)
+        s = 2.0 * r_a * a + BTlam
+        g_nodes = S * s[:, None]  # (N+1,4)
          # Integral over time using trapezoidal rule        
         gK = jnp.sum(0.5 * dt * (g_nodes[:-1] + g_nodes[1:]), axis=0)
         return gK
@@ -156,9 +148,9 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
     # Function to simulate trajectory and outputs for given K
     @jax.jit
     def simulate_traj_outputs(K):
-        X = forward_trajectory(K)
-        J, u, _ = cost_from_traj(K, X)
-        return X, u, J
+        S = forward_trajectory(K)
+        J, a, _ = cost_from_traj(K, S)
+        return S, a, J
 
     # -----------------------------
     # Optimizer setup
@@ -198,7 +190,7 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
         if it == 1 or it % print_every == 0:
             print(
                 f"[Adjoint on full state + Optax ADAM] it={it:6d}  "
-                f"J={Jf:.6e}  ||g||={gnorm:.3e}  K={np.array(K)}"
+                f"J={Jf:.6e}  K={np.array(K)}"
             )
         # Optax ADAM update step
         updates, opt_state = optimizer.update(gK, opt_state, params=K)
@@ -211,15 +203,15 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
     it_final = best_it
 
     # Passive (K=0) and optimal trajectories
-    X_passive, _, _ = simulate_traj_outputs(jnp.zeros(4))
-    X_opt, u_opt, _ = simulate_traj_outputs(jnp.array(K_opt))
+    S_passive, _, _ = simulate_traj_outputs(jnp.zeros(4))
+    S_opt, a_opt, _ = simulate_traj_outputs(jnp.array(K_opt))
 
     info = {
         "success": True,
-        "message": "Adjoint + Optax ADAM completed",
+        "message": "Adjoint + Optax ADAM completed (full State)",
         "nit": it_final,
         "J": J_final,
-        "K_opt": -K_opt,
+        "K_opt": K_opt,
         "J_hist": np.array(J_hist),
         "gnorm_hist": np.array(gnorm_hist),
         "best_iter": best_it,
@@ -227,9 +219,9 @@ def simulate_2dof_with_optax_adam_classical_adjoint(
 
     return (
         t,
-        np.array(X_passive),
-        np.array(X_opt),
-        np.array(u_opt),
+        np.array(S_passive),
+        np.array(S_opt),
+        np.array(a_opt),
         K_opt,
         info,
         K_hist,
@@ -249,18 +241,19 @@ if __name__ == "__main__":
     c1, c2 = p["c1"], p["c2"]
     cd, kc = p["cd"], p["kc"]
 
-    # Weights for Q via outputs: [x1, x1d, e=x1+x2, ed=x1d+x2d]
-    w_x1 = p['w_x1']    # Penalty on x1
-    w_x1d = p['w_x1d']  # Penalty on x1d
-    w_e = p['w_e']      # Penalty on e = x1 + x2
-    w_ed = p['w_ed']    # Penalty on ed = x1d + x2d
+    # Weights for Q via outputs: [s1, s1d, e=s1+s2, ed=s1d+s2d]
+    w_s1 = p['w_s1']    # Penalty on s1
+    w_s1d = p['w_s1d']  # Penalty on s1d
+    w_e = p['w_e']      # Penalty on e = s1 + s2
+    w_ed = p['w_ed']    # Penalty on ed = s1d + s2d
     # Weight for R:
-    r_u  = p['r_u']      # Penalty on the control ui^2
+    r_a  = p['r_a']      # Penalty on the control ai^2
     # Simulation time and initial state
     t_end = p['t_end']
-    y0 = (p['x1_0'], p['x1d_0'], p['x2_0'], p['x2d_0'])
+    y0 = (p['s1_0'], p['s1d_0'], p['s2_0'], p['s2d_0'])
     
-    N = 400 # number of time intervals
+    dt = 0.01
+    N = int(t_end/dt)
 
     # Optimization hyperparameters
     max_iter = 7_000 # maximum number of ADAM iterations
@@ -268,7 +261,7 @@ if __name__ == "__main__":
     K0 = np.zeros(4)
 
     start = time.time()
-    t,sol_noControl, sol_control, u_series, K_opt, info, K_hist = simulate_2dof_with_optax_adam_classical_adjoint(
+    t,sol_noControl, sol_control, a_series, K_opt, info, K_hist = simulate_adjoint_fullState(
         m1, m2,
         k1, k2,
         c1, c2,
@@ -276,8 +269,8 @@ if __name__ == "__main__":
         t_end,
         y0,
         N,
-        w_x1, w_x1d, w_e, w_ed,
-        r_u,
+        w_s1, w_s1d, w_e, w_ed,
+        r_a,
         max_iter,
         K0=K0,
         lr=2e-2,
@@ -294,18 +287,17 @@ if __name__ == "__main__":
 
 
 
-
     # Unpack trajectories for plotting
-    x1_noControl, x1d_noControl, x2_noControl, x2d_noControl = sol_noControl.T
-    x1_control, x1d_control, x2_control, x2d_control = sol_control.T
+    s1_noControl, s1d_noControl, s2_noControl, s2d_noControl = sol_noControl.T
+    s1_control, s1d_control, s2_control, s2d_control = sol_control.T
 
     # Plots
     from _plottingFunc import plot_controlVs_noControl, plot_control_force
     plot_controlVs_noControl(
-        t, x1_noControl, x2_noControl,
-        t, x1_control, x2_control,
+        t, s1_noControl, s2_noControl,
+        t, s1_control, s2_control,
     )
-    plot_control_force(t_end, u_series)
+    plot_control_force(t_end, a_series)
 
     from _plottingFunc import plot_optimization_history,plot_gain_history_fullState
     # Optimization history

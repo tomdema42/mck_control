@@ -34,7 +34,7 @@ def load_params(filename):
 def build_dyn_system_np(m1, m2, k1, k2, c1, c2, kc, cd):
     """
     Build state-space matrices A, B for the 2-DOF system:
-      x = [x1, v1, x2, v2]
+      x = [s1, s1d, s2, s2d]
       x_dot = A x + B u
     where u is the control force on mass 2.
     """
@@ -49,7 +49,7 @@ def build_dyn_system_np(m1, m2, k1, k2, c1, c2, kc, cd):
 def build_dyn_system_jnp(m1, m2, k1, k2, c1, c2, kc, cd):
     """
     Build open-loop state-space matrices (A, B) for the 2-DOF system:
-        x = [x1, x1d, x2, x2d]
+        s = [s1, s1d, s2, s2d]
 
     B is a 4-vector because u is a scalar input acting on x2dd.
     """
@@ -68,7 +68,7 @@ def rhs_fullState(t, y, K, m1, m2, k1, k2, c1, c2, kc, cd, Passive = False):
     Right-hand side of the state-space ODE for the 2-DOF system with LQR control.
     Inputs:
         t - time (not used, but required by ODE solvers)
-        y - state vector [x1, x1d, x2, x2d]
+        y - state vector [s1, s1d, s2, s2d]
         K - LQR gain matrix
         m1, m2 - masses
         k1, k2 - spring constants
@@ -78,16 +78,16 @@ def rhs_fullState(t, y, K, m1, m2, k1, k2, c1, c2, kc, cd, Passive = False):
     Outputs:
         dydt - time derivative of the state vector
     """
-    x1, x1d, x2, x2d = y
+    s1, s1d, s2, s2d = y
     if Passive:
-        u = 0.0
+        a = 0.0
     else:
         # LQR control law
-        u = -float(K @ np.array([x1, x1d, x2, x2d]))
+        a = -float(K @ np.array([s1, s1d, s2, s2d]))
 
     # dynamics with control
-    x1dd = (-k1 * x1 - c1 * x1d + cd * (x2d - x1d) + kc * (x2 - x1) ) / m1
-    x2dd = (-k2 * x2 - c2 * x2d - cd * (x2d - x1d) - kc * (x2 - x1) + u) / m2
+    s1dd = (-k1 * s1 - c1 * s1d + cd * (s2d - s1d) + kc * (s2 - s1) ) / m1
+    s2dd = (-k2 * s2 - c2 * s2d - cd * (s2d - s1d) - kc * (s2 - s1) + a) / m2
 
-    return [x1d, x1dd, x2d, x2dd]
+    return [s1d, s1dd, s2d, s2dd]
 # %%

@@ -17,58 +17,70 @@ def make_time_grid(t_end, N):
     dt = float(t[1] - t[0])
     return t, dt
 # -----------------------------
-def running_cost(x, u, w_x1, w_x1d, w_e, w_ed, r_u):
+def running_cost(s, a, w_s1, w_s1d, w_e, w_ed, r_a):
     """
-    Running cost L(x,u) at a single time step.
+    Running cost L(s,a) at a single time step.
     """
-    x1, x1d, x2, x2d = x
-    e = x1 + x2
-    ed = x1d + x2d
+    s1, s1d, s2, s2d = s
+    e = s1 + s2
+    ed = s1d + s2d
     return (
-        w_x1 * x1 * x1
-        + w_x1d * x1d * x1d
+        w_s1 * s1 * s1
+        + w_s1d * s1d * s1d
         + w_e * e * e
         + w_ed * ed * ed
-        + r_u * u * u
+        + r_a * a * a
     )
-def grad_running_cost_x(x, K, w_x1, w_x1d, w_e, w_ed, r_u):
+def grad_running_cost_s(s, K, w_s1, w_s1d, w_e, w_ed, r_a, reducedState=False):
     """
-    ∂L/∂x for L(x,u) with u = K·x.
+    ∂L/∂s for L(s,a) with a = K·s.
     """
-    x1, x1d, x2, x2d = x
-    e = x1 + x2
-    ed = x1d + x2d
-
-    u = jnp.dot(K, x)
+    s1, s1d, s2, s2d = s
+    e = s1 + s2
+    ed = s1d + s2d
+    if reducedState:
+        K = k_full(K)
+        a = jnp.dot(K, s)
+    else:   
+        a = jnp.dot(K, s)
 
     g_state = jnp.array([
-        2.0 * (w_x1 * x1 + w_e * e),
-        2.0 * (w_x1d * x1d + w_ed * ed),
+        2.0 * (w_s1 * s1 + w_e * e),
+        2.0 * (w_s1d * s1d + w_ed * ed),
         2.0 * (w_e * e),
         2.0 * (w_ed * ed),
     ])
 
-    # d/ dx [ r_u (Kx)^2 ] = 2 r_u u K
-    g_control = 2.0 * r_u * u * K
+    # d/ ds [ r_a (Ks)^2 ] = 2 r_a a K
+    if reducedState:
+        g_control = 2.0 * r_a * a * k_full(K)
+    else:
+        g_control = 2.0 * r_a * a * K
     return g_state + g_control
 
 #%%
-def rk4_step_state(x, K, dt, A, B):
+def rk4_step_state(s, K, dt, A, B, reducedState=False):
     """
     One RK4 step for the forward state dynamics.
 
-    xdot = A x + B u,  u = K @ x
+    sdot = A s + B a,  a = K @ s
     """
-    def f_closed(x_local):
-        u_local = jnp.dot(K, x_local)
-        return A @ x_local + B * u_local
+    if reducedState:
+        def f_closed(s_local):
+            a_local = jnp.dot(K[:2], s_local[:2])  # K is 2-element gain
+            return A @ s_local + B * a_local
+    else:
+        def f_closed(s_local):
+            a_local = jnp.dot(K, s_local)
+            return A @ s_local + B * a_local
+        
 
-    k1_ = f_closed(x)
-    k2_ = f_closed(x + 0.5 * dt * k1_)
-    k3_ = f_closed(x + 0.5 * dt * k2_)
-    k4_ = f_closed(x + dt * k3_)
+    k1_ = f_closed(s)
+    k2_ = f_closed(s + 0.5 * dt * k1_)
+    k3_ = f_closed(s + 0.5 * dt * k2_)
+    k4_ = f_closed(s + dt * k3_)
 
-    return x + (dt / 6.0) * (k1_ + 2.0 * k2_ + 2.0 * k3_ + k4_)
+    return s + (dt / 6.0) * (k1_ + 2.0 * k2_ + 2.0 * k3_ + k4_)
 
 def rk4_step_adjoint_rev(lam, g_curr, g_mid, g_next, dt, AclT):
     """
@@ -90,3 +102,12 @@ def rk4_step_adjoint_rev(lam, g_curr, g_mid, g_next, dt, AclT):
     k4_ = rhs_lambda(lam + dt * k3_, g_next)
 
     return lam + (dt / 6.0) * (k1_ + 2.0 * k2_ + 2.0 * k3_ + k4_)
+
+
+def k_full(k):
+    """Embed k=[k0,k1] into full-state gain [k0,k1,0,0]."""
+    return jnp.array([k[0], k[1], 0.0, 0.0])
+
+def A_cl(A, B, K):
+    return A + jnp.outer(B, K)
+# %%
